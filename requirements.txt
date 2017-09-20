@@ -1,0 +1,1 @@
+python-lambda==1.0.0
