@@ -43,24 +43,29 @@ def handler(event, context):
     activity = json_loads(urllib.request.urlopen(req).read())[0]
 
     if activity['name'] not in ['Morning Ride', 'Afternoon Ride', 'Evening Ride']:
-        return 'No need to rename {0}, "{1}"'.format(activity['id'], activity['name'])
+        print('No need to rename {0}, "{1}"'.format(activity['id'], activity['name']))
+        return True
 
     start_location = get_location(activity['start_latlng'])
     end_location = get_location(activity['end_latlng'])
 
     if start_location == end_location:
-        return 'Route seems to be a loop'
+        print('Activity {0} seems to be a loop'.format(activity['id']))
+        return True
 
     if start_location and end_location:
         activity_url = 'https://www.strava.com/api/v3/activities/{0}'.format(activity['id'])
+        activity_name = 'Commute from {0} to {1}'.format(start_location, end_location)
         data = urllib.parse.urlencode({
-            'name': 'Commute from {0} to {1}'.format(start_location, end_location),
+            'name': activity_name,
             'commute': 'true',
         })
         data = data.encode('ascii')
         req = urllib.request.Request(activity_url, headers=headers, data=data, method='PUT')
         response = urllib.request.urlopen(req).read()
 
-        return 'Strava commute {0} renamed successfully'.format(activity['id'])
+        print('Commute {0} renamed to "{1}" successfully'.format(activity['id'], activity_name))
+        return True
 
-    return 'Nothing happened'
+    print('No action taken for {0}'.format(activity['id']))
+    return True
