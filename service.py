@@ -20,9 +20,17 @@ def get_location(latlng):
             'latitude_bounds': (51.488, 51.492),
             'longitude_bounds': (-0.273, -0.265),
         }, {
+            'name': 'Putney',
+            'latitude_bounds': (51.454, 51.458),
+            'longitude_bounds': (-0.227, -0.219),
+        }, {
             'name': 'Victoria',
             'latitude_bounds': (51.496, 51.500),
             'longitude_bounds': (-0.145, -0.134),
+        }, {
+            'name': 'Soho',
+            'latitude_bounds': (51.511, 51.515),
+            'longitude_bounds': (-0.142, -0.135),
         },
     ]
 
