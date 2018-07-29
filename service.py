@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 
-from json import loads as json_loads
-from os import getenv
+import json
 
-import urllib.parse
-import urllib.request
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
+
+from os import getenv
 
 
 def coordinates_in_bounding_box(coords, latitude_bounds, longitude_bounds):
@@ -44,40 +45,66 @@ def get_location(latlng):
 
     return None
 
-def handler(event, context):
+def build_response(status, body_json):
+    return {
+        "statusCode": status,
+        "headers": {"Content-type": "application/json"},
+        "body": json.dumps(body_json)
+    }
+
+def lambda_handler(event, context):
     headers = {
         'Authorization': 'Bearer {0}'.format(getenv('STRAVA_API_TOKEN'))
     }
 
-    activities_endpoint = 'https://www.strava.com/api/v3/athlete/activities?per_page=1'
+    if event['httpMethod'] == 'GET':
+        challenge = event['queryStringParameters']['hub.challenge']
+        return build_response(200, {'hub.challenge': challenge})
 
-    req = urllib.request.Request(activities_endpoint, headers=headers)
-    activity = json_loads(urllib.request.urlopen(req).read())[0]
+    if event['httpMethod'] == 'POST':
+        post_data = json.loads(event['body'])
 
-    if activity['name'] not in ['Morning Ride', 'Afternoon Ride', 'Evening Ride']:
-        print('No need to rename {0}, "{1}"'.format(activity['id'], activity['name']))
-        return True
+        if post_data['object_type'] != 'activity':
+            return build_response(200, {'message': 'Not an activity, no action taken'})
 
-    start_location = get_location(activity['start_latlng'])
-    end_location = get_location(activity['end_latlng'])
+        if post_data['aspect_type'] != 'create':
+            return build_response(200, {'message': 'Not an activity creation, no action taken'})
 
-    if start_location == end_location:
-        print('Activity {0} seems to be a loop'.format(activity['id']))
-        return True
+        new_activity_id = post_data['object_id']
+        activity_url = 'https://www.strava.com/api/v3/activities/{0}'.format(new_activity_id)
+        req = Request(activity_url, headers=headers)
+        activity = json.loads(urlopen(req).read())
 
-    if start_location and end_location:
-        activity_url = 'https://www.strava.com/api/v3/activities/{0}'.format(activity['id'])
-        activity_name = 'Commute from {0} to {1}'.format(start_location, end_location)
-        data = urllib.parse.urlencode({
-            'name': activity_name,
-            'commute': 'true',
+        if activity['name'] not in ['Morning Ride', 'Afternoon Ride', 'Evening Ride']:
+            return build_response(200, {
+                'message': 'No need to rename {0}, "{1}"'.format(activity['id'], activity['name'])
+            })
+
+        start_location = get_location(activity['start_latlng'])
+        end_location = get_location(activity['end_latlng'])
+
+        if start_location == end_location:
+            return build_response(200, {
+                'message': 'Activity {0} seems to be a loop'.format(activity['id'])
+            })
+
+        if start_location and end_location:
+            activity_name = 'Commute from {0} to {1}'.format(start_location, end_location)
+            data = urlencode({
+                'name': activity_name,
+                'commute': 'true',
+            })
+            data = data.encode('ascii')
+            req = Request(activity_url, headers=headers, data=data, method='PUT')
+            response = urlopen(req).read()
+
+            return build_response(200, {
+                'message': 'Commute {0} renamed to "{1}" successfully'.format(activity['id'], activity_name)
+            })
+
+        return build_response(200, {
+            'message': 'No action taken for {0}'.format(activity['id']),
+            'data': post_data
         })
-        data = data.encode('ascii')
-        req = urllib.request.Request(activity_url, headers=headers, data=data, method='PUT')
-        response = urllib.request.urlopen(req).read()
 
-        print('Commute {0} renamed to "{1}" successfully'.format(activity['id'], activity_name))
-        return True
-
-    print('No action taken for {0}'.format(activity['id']))
-    return True
+    return build_response(400, {'message': 'Unknown method'})
