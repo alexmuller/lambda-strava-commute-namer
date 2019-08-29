@@ -37,6 +37,10 @@ def get_location(latlng):
             'latitude_bounds': (51.511, 51.515),
             'longitude_bounds': (-0.142, -0.135),
         }, {
+            'name': 'Bracken House',
+            'latitude_bounds': (51.511, 51.514),
+            'longitude_bounds': (-0.098, -0.094),
+        }, {
             'name': 'Broadcasting House',
             'latitude_bounds': (51.516, 51.522),
             'longitude_bounds': (-0.148, -0.138),
